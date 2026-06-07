@@ -102,10 +102,11 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
                 .findFirst()
                 .orElseGet(() -> {
                     ShoppingCartItem shoppingCartItem1 = shoppingCartItemService.convertToShoppingCartItem(shoppingCartItemDto);
+                    shoppingCartItem1.setQuantity(0);
                     shoppingCart.getShoppingCartItems().add(shoppingCartItem1);
                     return shoppingCartItem1;
                 });
-        shoppingCartItem.setQuantity(shoppingCartItemDto.getQuantity());
+        shoppingCartItem.setQuantity(shoppingCartItem.getQuantity() + shoppingCartItemDto.getQuantity());
         shoppingCartItemRepo.save(shoppingCartItem);
         updateShoppingCartTotalAndDiscount(shoppingCart);
         shoppingCartRepo.save(shoppingCart);
