@@ -59,13 +59,17 @@ public class ProductServiceImpl implements ProductService {
                         )
                 )
         );
-        // Added temp sku due to not null and not blank annotations for sku in Product
-        product.setSku(product.getCategory().getName().substring(0, 3)
-                .concat("-")
-                .concat(product.getName().substring(0, 5).replace(" ", "X"))
-                .concat("-")
-                .concat(product.getDesc().substring(0, 3).replace(" ", "X"))
-        );
+        // Generate a safe, deterministic, human-readable SKU from category/name/desc segments.
+        String baseSku = generateSku(
+                product.getCategory().getName(),
+                product.getName(),
+                product.getDesc());
+        String sku = baseSku;
+        int seq = 1;
+        while (productRepo.existsBySku(sku)) {
+            sku = baseSku + "-" + seq++;
+        }
+        product.setSku(sku);
 
         Product addedProduct = this.productRepo.save(product);
 
@@ -275,6 +279,39 @@ public class ProductServiceImpl implements ProductService {
     private ProductDto productToDto(Product product)
     {
         return this.modelMapper.map(product, ProductDto.class);
+    }
+
+    /**
+     * Generates a deterministic, human-readable SKU from the category name, product name,
+     * and description. Each segment is truncated to the required length (or padded with 'X'
+     * when the input is shorter) so that any input length is safe. Spaces in the name and
+     * description segments are replaced with 'X'.
+     * <p>
+     * Format: {3-char category}-{5-char name}-{3-char desc}
+     *
+     * @param categoryName the category name (may be any length, including shorter than 3)
+     * @param productName  the product name (may be any length, including shorter than 5)
+     * @param desc         the product description (may be null or any length)
+     * @return the base SKU string
+     */
+    static String generateSku(String categoryName, String productName, String desc) {
+        String catPart = safeSegment(categoryName, 3).replace(" ", "X");
+        String namePart = safeSegment(productName, 5).replace(" ", "X");
+        String descPart = safeSegment(desc, 3).replace(" ", "X");
+        return catPart + "-" + namePart + "-" + descPart;
+    }
+
+    /**
+     * Returns exactly {@code maxLen} characters from {@code value}: the first {@code maxLen}
+     * characters if the value is long enough, or the value padded with 'X' if shorter.
+     * A null value is treated as an empty string.
+     */
+    static String safeSegment(String value, int maxLen) {
+        if (value == null) value = "";
+        if (value.length() >= maxLen) {
+            return value.substring(0, maxLen);
+        }
+        return value + "X".repeat(maxLen - value.length());
     }
 
 }
