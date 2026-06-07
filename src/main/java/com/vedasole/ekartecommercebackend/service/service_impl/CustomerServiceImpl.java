@@ -36,7 +36,8 @@ import static com.vedasole.ekartecommercebackend.utility.AppConstant.RELATIONS.U
 
 /**
  * This class provides the implementation for the Customer Service.
- * It uses the CustomerRepository and UserRepository to perform operations on the database.
+ * It uses the CustomerRepository and UserRepository to perform operations on
+ * the database.
  */
 @Service
 @AllArgsConstructor
@@ -69,8 +70,7 @@ public class CustomerServiceImpl implements CustomerService {
         User user = new User(
                 newCustomerDto.getEmail(),
                 passwordEncoder.encode(newCustomerDto.getPassword()),
-                newCustomerDto.getRole() != null ? newCustomerDto.getRole() : AppConstant.Role.USER
-        );
+                newCustomerDto.getRole() != null ? newCustomerDto.getRole() : AppConstant.Role.USER);
         // Save the user to the database
         User newUser;
         try {
@@ -100,10 +100,10 @@ public class CustomerServiceImpl implements CustomerService {
         }
 
         // Send welcome email
-        try{
+        try {
             sendWelcomeEmail(newUser.getEmail(), newCustomer.getFirstName());
             log.debug("Welcome email send to the user with email: {}", newUser.getEmail());
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             log.error("Error sending welcome email to new customer with email: {}", newUser.getEmail(), e);
         }
 
@@ -115,7 +115,7 @@ public class CustomerServiceImpl implements CustomerService {
      * Updates an existing customer.
      *
      * @param customerDto the customer data to be updated
-     * @param customerId the ID of the customer to be updated
+     * @param customerId  the ID of the customer to be updated
      * @return the updated customer with its ID and other details
      * @throws APIException if an error occurs while updating the customer
      */
@@ -129,15 +129,14 @@ public class CustomerServiceImpl implements CustomerService {
 
         Customer customer = dtoToCustomer(customerDto);
 
-        Customer customerFromDB = this.customerRepo.findById(customerId).
-                orElseThrow(() -> new ResourceNotFoundException(
+        Customer customerFromDB = this.customerRepo.findById(customerId)
+                .orElseThrow(() -> new ResourceNotFoundException(
                         CUSTOMER.getValue(), "id", customerId));
 
         Long userId = customerFromDB.getUser().getUserId();
 
-        User userForCustomerInDB = this.userRepo.findById(userId).
-                orElseThrow(() -> new ResourceNotFoundException(
-                        USER.getValue(), "id", userId));
+        User userForCustomerInDB = this.userRepo.findById(userId).orElseThrow(() -> new ResourceNotFoundException(
+                USER.getValue(), "id", userId));
 
         userForCustomerInDB.setEmail(customerDto.getEmail());
         Optional.ofNullable(customerDto.getRole())
@@ -187,11 +186,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(
-            value = "allCustomersPage",
-            key = "#page + '-' + #size + '-' + #sortBy + '-' + #sortOrder",
-            sync = true
-    )
+    @Cacheable(value = "allCustomersPage", key = "#page + '-' + #size + '-' + #sortBy + '-' + #sortOrder", sync = true)
     public Page<CustomerDto> getAllCustomersByPage(int page, int size, String sortBy, String sortOrder) {
         PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(sortOrder), sortBy));
         return this.customerRepo.findAll(pageRequest)
@@ -212,8 +207,7 @@ public class CustomerServiceImpl implements CustomerService {
         return this.customerRepo.findById(customerId)
                 .map(this::customerToDto)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        CUSTOMER.getValue(), "id", customerId)
-                );
+                        CUSTOMER.getValue(), "id", customerId));
     }
 
     /**
@@ -229,10 +223,8 @@ public class CustomerServiceImpl implements CustomerService {
         return this.customerRepo.findByEmail(email)
                 .map(this::customerToDto)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        CUSTOMER.getValue(), "email", email)
-                );
+                        CUSTOMER.getValue(), "email", email));
     }
-
 
     /**
      * Returns the user associated with a customer.
@@ -246,8 +238,7 @@ public class CustomerServiceImpl implements CustomerService {
         return this.customerRepo.findById(customerId)
                 .map(Customer::getUser)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        CUSTOMER.getValue(), "id", customerId)
-                );
+                        CUSTOMER.getValue(), "id", customerId));
     }
 
     /**
@@ -264,20 +255,21 @@ public class CustomerServiceImpl implements CustomerService {
     /**
      * Sends a welcome email to a new customer.
      *
-     * @param email the email address of the recipient
+     * @param email     the email address of the recipient
      * @param firstName the first name of the recipient to personalize the email
      * @throws MessagingException if an error occurs while sending the email
      */
     private void sendWelcomeEmail(String email, String firstName) throws MessagingException {
         Context context = new Context();
         context.setVariable("name", firstName);
-        emailService.sendMimeMessage(email,"Welcome to Ekart Shopping!", context, "welcome");
+        emailService.sendMimeMessage(email, "Welcome to Ekart Shopping!", context, "welcome");
     }
 
     /**
      * Converts a CustomerDto object to a Customer entity.
      *
-     * @param customerDto the CustomerDto object containing customer data to be converted
+     * @param customerDto the CustomerDto object containing customer data to be
+     *                    converted
      * @return a Customer entity mapped from the provided CustomerDto
      */
     @Override
@@ -296,14 +288,13 @@ public class CustomerServiceImpl implements CustomerService {
         return customerToDto(customer);
     }
 
-
     /**
      * Maps a CustomerDto to a Customer.
      *
      * @param customerDto the CustomerDto to be mapped
      * @return the mapped Customer
      */
-    private Customer dtoToCustomer(CustomerDto customerDto){
+    private Customer dtoToCustomer(CustomerDto customerDto) {
         User user = new User(customerDto.getEmail(), customerDto.getPassword(), customerDto.getRole());
         Customer customer = this.modelMapper.map(customerDto, Customer.class);
         customer.setUser(user);
@@ -316,8 +307,9 @@ public class CustomerServiceImpl implements CustomerService {
      * @param newCustomerDto the NewCustomerDto to be mapped
      * @return the mapped Customer
      */
-    private Customer newCustomerDtoToCustomer(NewCustomerDto newCustomerDto){
-        User user = new User(newCustomerDto.getEmail(), passwordEncoder.encode(newCustomerDto.getPassword()), newCustomerDto.getRole());
+    private Customer newCustomerDtoToCustomer(NewCustomerDto newCustomerDto) {
+        User user = new User(newCustomerDto.getEmail(), passwordEncoder.encode(newCustomerDto.getPassword()),
+                newCustomerDto.getRole());
         Customer customer = this.modelMapper.map(newCustomerDto, Customer.class);
         customer.setUser(user);
         return customer;
@@ -329,8 +321,7 @@ public class CustomerServiceImpl implements CustomerService {
      * @param customer the Customer to be mapped
      * @return the mapped CustomerDto
      */
-    private CustomerDto customerToDto(Customer customer)
-    {
+    private CustomerDto customerToDto(Customer customer) {
         CustomerDto customerDto = this.modelMapper.map(customer, CustomerDto.class);
         customerDto.setEmail(customer.getUser().getEmail());
         customerDto.setRole(customer.getUser().getRole());
