@@ -12,6 +12,7 @@ import com.vedasole.ekartecommercebackend.repository.ShoppingCartItemRepo;
 import com.vedasole.ekartecommercebackend.repository.ShoppingCartRepo;
 import com.vedasole.ekartecommercebackend.service.service_interface.ShoppingCartItemService;
 import com.vedasole.ekartecommercebackend.service.service_interface.ShoppingCartService;
+import jakarta.persistence.EntityManager;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -34,6 +35,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     private final CustomerRepo customerRepo;
     private final ShoppingCartItemRepo shoppingCartItemRepo;
     private final ShoppingCartItemService shoppingCartItemService;
+    private final EntityManager entityManager;
 
     /**
      * This method creates a new shopping cart for the given user.
@@ -97,15 +99,19 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     public ShoppingCartDto addOrUpdateItemInCart(ShoppingCartItemDto shoppingCartItemDto) {
         ShoppingCart shoppingCart = shoppingCartRepo.findById(shoppingCartItemDto.getCartId())
                 .orElseThrow(() -> new ResourceNotFoundException(SHOPPING_CART.getValue(), "id", shoppingCartItemDto.getCartId()));
-        ShoppingCartItem shoppingCartItem = shoppingCart.getShoppingCartItems().stream()
+        Optional<ShoppingCartItem> existingItem = shoppingCart.getShoppingCartItems().stream()
                 .filter(item -> item.getProduct().getProductId() == shoppingCartItemDto.getProduct().getProductId())
-                .findFirst()
-                .orElseGet(() -> {
-                    ShoppingCartItem shoppingCartItem1 = shoppingCartItemService.convertToShoppingCartItem(shoppingCartItemDto);
-                    shoppingCart.getShoppingCartItems().add(shoppingCartItem1);
-                    return shoppingCartItem1;
-                });
-        shoppingCartItem.setQuantity(shoppingCartItemDto.getQuantity());
+                .findFirst();
+        ShoppingCartItem shoppingCartItem;
+        if (existingItem.isPresent()) {
+            // Item already in cart: increment the quantity (accumulate, not overwrite)
+            shoppingCartItem = existingItem.get();
+            shoppingCartItem.setQuantity(shoppingCartItem.getQuantity() + shoppingCartItemDto.getQuantity());
+        } else {
+            // New item: add to cart with the requested quantity
+            shoppingCartItem = shoppingCartItemService.convertToShoppingCartItem(shoppingCartItemDto);
+            shoppingCart.getShoppingCartItems().add(shoppingCartItem);
+        }
         shoppingCartItemRepo.save(shoppingCartItem);
         updateShoppingCartTotalAndDiscount(shoppingCart);
         shoppingCartRepo.save(shoppingCart);
@@ -121,7 +127,15 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     @Override
     public void deleteCart(long customerId) {
         try{
-            shoppingCartRepo.deleteByCustomer_CustomerId(customerId);
+            ShoppingCart cart = shoppingCartRepo.findByCustomer_CustomerId(customerId)
+                    .orElseThrow(() -> new ResourceNotFoundException(SHOPPING_CART.getValue(), "customerId", customerId));
+            // Load items into the persistence context so they are managed.
+            shoppingCartItemRepo.findAllByShoppingCartCartId(cart.getCartId());
+            // Clear the collection directly (bypass setter to avoid @PreUpdate NPE
+            // from items.setShoppingCart(null)). With orphanRemoval = true,
+            // JPA will issue DELETE for each orphaned item during flush.
+            cart.getShoppingCartItems().clear();
+            shoppingCartRepo.delete(cart);
         } catch (Exception e) {
             log.error("Error deleting cart with user id: {}", customerId);
             throw e;

@@ -34,7 +34,7 @@ public class ShoppingCart {
     @JsonIgnore
     private Customer customer;
 
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "shoppingCart", fetch = FetchType.LAZY)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, mappedBy = "shoppingCart", fetch = FetchType.LAZY)
     private List<ShoppingCartItem> shoppingCartItems;
 
     @Column(name = "total", nullable = false)
