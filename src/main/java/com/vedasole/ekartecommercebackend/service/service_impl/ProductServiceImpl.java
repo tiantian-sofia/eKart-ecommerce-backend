@@ -60,12 +60,11 @@ public class ProductServiceImpl implements ProductService {
                 )
         );
         // Added temp sku due to not null and not blank annotations for sku in Product
-        product.setSku(product.getCategory().getName().substring(0, 3)
-                .concat("-")
-                .concat(product.getName().substring(0, 5).replace(" ", "X"))
-                .concat("-")
-                .concat(product.getDesc().substring(0, 3).replace(" ", "X"))
-        );
+        product.setSku(generateSku(
+                product.getCategory().getName(),
+                product.getName(),
+                product.getDesc()
+        ));
 
         Product addedProduct = this.productRepo.save(product);
 
@@ -275,6 +274,22 @@ public class ProductServiceImpl implements ProductService {
     private ProductDto productToDto(Product product)
     {
         return this.modelMapper.map(product, ProductDto.class);
+    }
+
+    /**
+     * Generates a deterministic, readable SKU from category name, product name, and description.
+     * Safe for any input length.
+     */
+    String generateSku(String categoryName, String productName, String description) {
+        return safeSubstring(categoryName, 3)
+                .concat("-")
+                .concat(safeSubstring(productName, 5).replace(" ", "X"))
+                .concat("-")
+                .concat(safeSubstring(description, 3).replace(" ", "X"));
+    }
+
+    private String safeSubstring(String str, int maxLen) {
+        return str.substring(0, Math.min(str.length(), maxLen));
     }
 
 }
