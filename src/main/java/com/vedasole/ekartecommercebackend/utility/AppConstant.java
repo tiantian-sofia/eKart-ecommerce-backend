@@ -24,7 +24,12 @@ public class AppConstant {
         ORDER_DETAIL("Order Detail"),
         ORDER_DETAILS("Order Details"),
         USER("User"),
-        USERS("Users");
+        USERS("Users"),
+        FLASH_SALE("FlashSale"),
+        FLASH_SALES("FlashSales"),
+        FLASH_SALE_ITEM("FlashSaleItem"),
+        FLASH_SALE_ITEMS("FlashSaleItems"),
+        FLASH_SALE_PURCHASE("FlashSalePurchase");
 
         private final String value;
 

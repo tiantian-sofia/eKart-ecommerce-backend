@@ -36,6 +36,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final CustomerService customerService;
     private final AddressRepo addressRepo;
     private final EmailService emailService;
+    private final FlashSalePurchaseService flashSalePurchaseService;
     private static final String ORDER_ID_STRING = "order_id";
     private static final String CUSTOMERID_STRING = "customerId";
     private static final String CUSTOMER_ID_STRING = "customer_id";
@@ -173,6 +174,9 @@ public class PaymentServiceImpl implements PaymentService {
                                 order.setAddress(savedAddress);
                                 order.setOrderStatus(AppConstant.OrderStatus.ORDER_PLACED);
                                 order = orderRepo.save(order);
+
+                                // Re-apply flash sale total if this is a flash sale order
+                                flashSalePurchaseService.reapplyFlashSaleTotal(order.getOrderId());
 
                                 Context context = new Context();
                                 context.setVariable("order", order);

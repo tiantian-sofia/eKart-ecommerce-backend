@@ -122,6 +122,61 @@ public class StripeService {
                 .toList();
     }
 
+    /**
+     * Creates a Stripe checkout session for a flash sale purchase.
+     * Uses the flash price instead of the product's normal price.
+     */
+    @Transactional
+    public Session createFlashSaleCheckoutSession(
+            Order order, double flashPrice, long quantity, Customer customer, Product product
+    ) throws StripeException {
+
+        SessionCreateParams.LineItem.PriceData priceData = SessionCreateParams.LineItem.PriceData.builder()
+                .setCurrency("INR")
+                .setUnitAmount((long) (flashPrice * 100))
+                .setProductData(
+                        SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                .setName(product.getName() + " [Flash Sale]")
+                                .addImage(product.getImage())
+                                .putMetadata("productId", Long.toString(product.getProductId()))
+                                .putMetadata("SKU", product.getSku())
+                                .putMetadata("flashSale", "true")
+                                .build()
+                ).build();
+
+        SessionCreateParams.LineItem lineItem = SessionCreateParams.LineItem.builder()
+                .setQuantity(quantity)
+                .setPriceData(priceData)
+                .build();
+
+        String orderId = Long.toString(order.getOrderId());
+        String clientReferenceNumber = "FLASH_CUST" + customer.getCustomerId() + "_" + orderId;
+
+        SessionCreateParams params = SessionCreateParams.builder()
+                .setCustomerCreation(SessionCreateParams.CustomerCreation.IF_REQUIRED)
+                .setShippingAddressCollection(SessionCreateParams.ShippingAddressCollection.builder()
+                        .addAllowedCountry(SessionCreateParams.ShippingAddressCollection.AllowedCountry.IN).build())
+                .setClientReferenceId(clientReferenceNumber)
+                .setMode(SessionCreateParams.Mode.PAYMENT)
+                .setCustomerEmail(customer.getEmail())
+                .putMetadata("order_id", orderId)
+                .putMetadata("clientReferenceNumber", clientReferenceNumber)
+                .putMetadata("customer_id", Long.toString(customer.getCustomerId()))
+                .putMetadata("flash_sale", "true")
+                .setSuccessUrl(frontendDomainUrl + "/paymentConfirmation?success=true&session_id={CHECKOUT_SESSION_ID}&order_id=" + orderId + "&client_reference_id=" + clientReferenceNumber)
+                .setCancelUrl(frontendDomainUrl + "/paymentConfirmation?canceled=true&session_id={CHECKOUT_SESSION_ID}&order_id=" + orderId + "&client_reference_id=" + clientReferenceNumber)
+                .addLineItem(lineItem)
+                .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
+                .build();
+
+        RequestOptions requestOptions = RequestOptions.builder()
+                .setIdempotencyKey(clientReferenceNumber)
+                .setMaxNetworkRetries(3)
+                .build();
+
+        return Session.create(params, requestOptions);
+    }
+
     private SessionCreateParams.LineItem.PriceData generatePriceData(ShoppingCartItem item) {
         return SessionCreateParams.LineItem.PriceData.builder()
                 .setCurrency("INR")
