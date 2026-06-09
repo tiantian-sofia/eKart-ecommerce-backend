@@ -24,10 +24,22 @@ public class AppConstant {
         ORDER_DETAIL("Order Detail"),
         ORDER_DETAILS("Order Details"),
         USER("User"),
-        USERS("Users");
+        USERS("Users"),
+        FLASH_SALE_CAMPAIGN("FlashSaleCampaign"),
+        FLASH_SALE_ITEM("FlashSaleItem");
 
         private final String value;
 
+    }
+
+    @AllArgsConstructor
+    @Getter
+    public enum FlashSaleStatus {
+        PENDING("PENDING"),
+        ACTIVE("ACTIVE"),
+        ENDED("ENDED");
+
+        private final String name;
     }
 
     @AllArgsConstructor
