@@ -52,9 +52,10 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
                         );
                         SecurityContextHolder.getContext().setAuthentication(authToken);
                     }
-                } else {
-                    logger.error("Invalid JWT token :" + jwt);
+                } else if (userEmail == null) {
+                    logger.error("Invalid JWT token: unable to extract username");
                     response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid JWT token");
+                    return;
                 }
             }
             filterChain.doFilter(request, response);
